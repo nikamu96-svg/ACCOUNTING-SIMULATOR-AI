@@ -1,9 +1,9 @@
 from groq import Groq
-import os
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+import streamlit as st
 
 def ai_feedback(financials):
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
     prompt = f"""
     Anda adalah Accounting Coach.
     Data keuangan saat ini:
@@ -16,8 +16,12 @@ def ai_feedback(financials):
 
     response = client.chat.completions.create(
         model="llama3-8b-8192",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.6
+        messages=[
+            {"role": "system", "content": "Anda adalah asisten akuntansi yang ramah dan edukatif."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.6,
+        max_tokens=300
     )
 
     return response.choices[0].message.content
