@@ -1,27 +1,34 @@
-from groq import Groq
 import streamlit as st
+from groq import Groq
 
 def ai_feedback(financials):
+    if "GROQ_API_KEY" not in st.secrets:
+        return "❌ GROQ_API_KEY belum diset di Streamlit Secrets."
+
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
     prompt = f"""
-    Anda adalah Accounting Coach.
-    Data keuangan saat ini:
-    Kas: {financials['cash']}
-    Pendapatan: {financials['revenue']}
-    Beban: {financials['expense']}
+Anda adalah Accounting Coach yang ramah dan edukatif.
 
-    Jelaskan kondisi keuangan ini secara sederhana dan beri saran.
-    """
+Data keuangan:
+Kas: Rp{financials['cash']:,}
+Pendapatan: Rp{financials['revenue']:,}
+Beban: Rp{financials['expense']:,}
 
-    response = client.chat.completions.create(
-        model="llama3-8b-8192",
-        messages=[
-            {"role": "system", "content": "Anda adalah asisten akuntansi yang ramah dan edukatif."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.6,
-        max_tokens=300
-    )
+Tolong jelaskan kondisi keuangan dan beri 1 saran singkat.
+"""
 
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": "Anda adalah asisten akuntansi."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.5,
+            max_tokens=250
+        )
+        return response.choices[0].message.content
+
+    except Exception as e:
+        return f"❌ Error Groq API: {e}"
