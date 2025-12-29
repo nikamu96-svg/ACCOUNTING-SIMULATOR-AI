@@ -1,6 +1,8 @@
 import streamlit as st
-from groq_ai import ai_feedback
 
+# =========================
+# KONFIGURASI HALAMAN
+# =========================
 st.set_page_config(
     page_title="Accounting Simulator AI",
     page_icon="📊",
@@ -8,91 +10,113 @@ st.set_page_config(
 )
 
 st.title("📊 Accounting Simulator AI")
-st.caption("Simulasi laporan keuangan sederhana dengan analisis AI")
+st.caption("Simulasi laporan keuangan berbasis input pemain (Turn-Based)")
 
 # =========================
-# Inisialisasi Session State
+# INISIALISASI GAME
 # =========================
-if "financials" not in st.session_state:
-    st.session_state.financials = {}
-
-if "ai_result" not in st.session_state:
-    st.session_state.ai_result = ""
+if "month" not in st.session_state:
+    st.session_state.month = 1
+    st.session_state.cash = 5_000_000
+    st.session_state.history = []
+    st.session_state.status = "BERJALAN"
 
 # =========================
-# Input Data Keuangan
+# STATUS GAME
 # =========================
-st.subheader("🧾 Input Data Keuangan")
+st.subheader("📌 Status Simulasi")
 
-revenue = st.number_input(
-    "Pendapatan (Revenue)",
-    min_value=0.0,
-    step=100000.0,
-    format="%.2f"
+col1, col2, col3 = st.columns(3)
+col1.metric("Bulan", st.session_state.month)
+col2.metric("Kas", f"Rp {st.session_state.cash:,.0f}")
+col3.metric("Status", st.session_state.status)
+
+st.divider()
+
+# =========================
+# INPUT PEMAIN
+# =========================
+st.subheader("✍️ Input Data Keuangan Bulan Ini")
+
+pendapatan = st.number_input(
+    "Pendapatan (Rp)",
+    min_value=0,
+    step=100_000,
+    value=1_000_000
 )
 
-expenses = st.number_input(
-    "Beban (Expenses)",
-    min_value=0.0,
-    step=100000.0,
-    format="%.2f"
+beban = st.number_input(
+    "Total Beban (Rp)",
+    min_value=0,
+    step=100_000,
+    value=800_000
 )
 
-assets = st.number_input(
-    "Total Aset",
-    min_value=0.0,
-    step=100000.0,
-    format="%.2f"
+aset = st.number_input(
+    "Total Aset (Rp)",
+    min_value=0,
+    step=500_000,
+    value=8_000_000
 )
 
-liabilities = st.number_input(
-    "Total Liabilitas",
-    min_value=0.0,
-    step=100000.0,
-    format="%.2f"
+liabilitas = st.number_input(
+    "Total Liabilitas (Rp)",
+    min_value=0,
+    step=500_000,
+    value=3_000_000
 )
 
 # =========================
-# Simpan Data
+# PROSES BULAN
 # =========================
-if st.button("💾 Simpan Data Keuangan"):
-    st.session_state.financials = {
-        "Pendapatan": revenue,
-        "Beban": expenses,
-        "Laba Bersih": revenue - expenses,
-        "Total Aset": assets,
-        "Total Liabilitas": liabilities,
-        "Ekuitas": assets - liabilities
-    }
-    st.success("Data keuangan berhasil disimpan")
+st.divider()
+
+if st.button("▶️ Jalankan Bulan"):
+    laba = pendapatan - beban
+    ekuitas = aset - liabilitas
+
+    # Update kas
+    st.session_state.cash += laba
+
+    # Simpan riwayat
+    st.session_state.history.append({
+        "Bulan": st.session_state.month,
+        "Pendapatan": pendapatan,
+        "Beban": beban,
+        "Laba": laba,
+        "Aset": aset,
+        "Liabilitas": liabilitas,
+        "Ekuitas": ekuitas,
+        "Kas Akhir": st.session_state.cash
+    })
+
+    # Cek bangkrut
+    if st.session_state.cash <= 0:
+        st.session_state.status = "BANGKRUT"
+
+    st.session_state.month += 1
 
 # =========================
-# Tampilkan Ringkasan
+# HASIL BULAN TERAKHIR
 # =========================
-if st.session_state.financials:
-    st.subheader("📈 Ringkasan Keuangan")
-    st.json(st.session_state.financials)
+if st.session_state.history:
+    st.subheader("📊 Hasil Bulan Terakhir")
+    last = st.session_state.history[-1]
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Laba Bersih", f"Rp {last['Laba']:,.0f}")
+    col2.metric("Ekuitas", f"Rp {last['Ekuitas']:,.0f}")
+    col3.metric("Kas Akhir", f"Rp {last['Kas Akhir']:,.0f}")
 
 # =========================
-# Analisis AI
+# RIWAYAT SIMULASI
 # =========================
-st.subheader("🤖 Analisis AI Akuntansi")
-
-if st.button("🔍 Analisis dengan AI"):
-    if not st.session_state.financials:
-        st.warning("Silakan input dan simpan data keuangan terlebih dahulu.")
-    else:
-        with st.spinner("AI sedang menganalisis laporan keuangan..."):
-            try:
-                feedback = ai_feedback(st.session_state.financials)
-                st.session_state.ai_result = feedback
-            except Exception as e:
-                st.error("Terjadi kesalahan saat memanggil AI.")
-                st.exception(e)
+if st.session_state.history:
+    st.subheader("📜 Riwayat Simulasi")
+    st.dataframe(st.session_state.history, use_container_width=True)
 
 # =========================
-# Hasil AI
+# GAME OVER
 # =========================
-if st.session_state.ai_result:
-    st.markdown("### 📌 Hasil Analisis AI")
-    st.markdown(st.session_state.ai_result)
+if st.session_state.status == "BANGKRUT":
+    st.error("💀 Kas habis. Usaha dinyatakan bangkrut.")
