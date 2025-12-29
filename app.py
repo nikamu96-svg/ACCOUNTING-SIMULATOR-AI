@@ -1,39 +1,98 @@
 import streamlit as st
-from accounting import init_financials, profit_loss
-from simulator import make_decision
 from groq_ai import ai_feedback
 
-st.set_page_config(page_title="Accounting Simulator AI", layout="centered")
+st.set_page_config(
+    page_title="Accounting Simulator AI",
+    page_icon="📊",
+    layout="centered"
+)
 
-st.title("🎮 Accounting Simulator AI")
+st.title("📊 Accounting Simulator AI")
+st.caption("Simulasi laporan keuangan sederhana dengan analisis AI")
 
+# =========================
+# Inisialisasi Session State
+# =========================
 if "financials" not in st.session_state:
-    st.session_state.financials = init_financials()
+    st.session_state.financials = {}
 
-st.subheader("📊 Dashboard Keuangan")
-st.write("Kas:", f"Rp{st.session_state.financials['cash']:,}")
-st.write("Pendapatan:", f"Rp{st.session_state.financials['revenue']:,}")
-st.write("Beban:", f"Rp{st.session_state.financials['expense']:,}")
-st.write("Laba / Rugi:", f"Rp{profit_loss(st.session_state.financials):,}")
+if "ai_result" not in st.session_state:
+    st.session_state.ai_result = ""
 
-st.divider()
+# =========================
+# Input Data Keuangan
+# =========================
+st.subheader("🧾 Input Data Keuangan")
 
-st.subheader("🕹️ Ambil Keputusan")
-decision = st.selectbox("Pilih keputusan:", ["Penjualan", "Biaya Operasional"])
-amount = st.number_input("Masukkan nominal:", min_value=0, step=10000)
+revenue = st.number_input(
+    "Pendapatan (Revenue)",
+    min_value=0.0,
+    step=100000.0,
+    format="%.2f"
+)
 
-if st.button("Proses Keputusan"):
-    st.session_state.financials, msg = make_decision(
-        st.session_state.financials,
-        decision,
-        amount
-    )
-    st.success(msg)
+expenses = st.number_input(
+    "Beban (Expenses)",
+    min_value=0.0,
+    step=100000.0,
+    format="%.2f"
+)
 
-st.divider()
+assets = st.number_input(
+    "Total Aset",
+    min_value=0.0,
+    step=100000.0,
+    format="%.2f"
+)
 
-st.subheader("🤖 AI Accounting Coach")
-if st.button("Minta Analisis AI"):
-    with st.spinner("AI sedang menganalisis..."):
-        feedback = ai_feedback(st.session_state.financials)
-    st.info(feedback)
+liabilities = st.number_input(
+    "Total Liabilitas",
+    min_value=0.0,
+    step=100000.0,
+    format="%.2f"
+)
+
+# =========================
+# Simpan Data
+# =========================
+if st.button("💾 Simpan Data Keuangan"):
+    st.session_state.financials = {
+        "Pendapatan": revenue,
+        "Beban": expenses,
+        "Laba Bersih": revenue - expenses,
+        "Total Aset": assets,
+        "Total Liabilitas": liabilities,
+        "Ekuitas": assets - liabilities
+    }
+    st.success("Data keuangan berhasil disimpan")
+
+# =========================
+# Tampilkan Ringkasan
+# =========================
+if st.session_state.financials:
+    st.subheader("📈 Ringkasan Keuangan")
+    st.json(st.session_state.financials)
+
+# =========================
+# Analisis AI
+# =========================
+st.subheader("🤖 Analisis AI Akuntansi")
+
+if st.button("🔍 Analisis dengan AI"):
+    if not st.session_state.financials:
+        st.warning("Silakan input dan simpan data keuangan terlebih dahulu.")
+    else:
+        with st.spinner("AI sedang menganalisis laporan keuangan..."):
+            try:
+                feedback = ai_feedback(st.session_state.financials)
+                st.session_state.ai_result = feedback
+            except Exception as e:
+                st.error("Terjadi kesalahan saat memanggil AI.")
+                st.exception(e)
+
+# =========================
+# Hasil AI
+# =========================
+if st.session_state.ai_result:
+    st.markdown("### 📌 Hasil Analisis AI")
+    st.markdown(st.session_state.ai_result)
