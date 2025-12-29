@@ -1,36 +1,37 @@
-import streamlit as st
+import os
 from groq import Groq
 
-def ai_feedback(financials):
-    # 1. Pastikan API key ada
-    if "GROQ_API_KEY" not in st.secrets:
-        return "❌ GROQ_API_KEY belum diset di Streamlit Secrets."
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-    # 2. Buat client DI DALAM fungsi
-    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+def ai_feedback(financials: dict) -> str:
+    # Ubah data ke teks (WAJIB)
+    data_text = "\n".join([f"{k}: {v}" for k, v in financials.items()])
 
-    # 3. Prompt SUPER SEDERHANA (ANTI BAD REQUEST)
-    prompt = (
-        f"Kas: {financials['cash']}\n"
-        f"Pendapatan: {financials['revenue']}\n"
-        f"Beban: {financials['expense']}\n\n"
-        "Jelaskan kondisi keuangan secara singkat dan beri satu saran."
-    )
+    prompt = f"""
+    Anda adalah seorang analis akuntansi profesional.
+
+    Berikut adalah data keuangan sebuah usaha:
+    {data_text}
+
+    Tolong berikan:
+    1. Analisis kondisi keuangan
+    2. Penilaian kinerja usaha
+    3. Saran perbaikan secara akuntansi
+    Gunakan bahasa yang jelas dan edukatif.
+    """
 
     try:
         response = client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant",  # ✅ MODEL BARU
             messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "system", "content": "You are an accounting expert."},
+                {"role": "user", "content": prompt}
             ],
-            temperature=0.4,
-            max_tokens=200
+            temperature=0.6,
+            max_tokens=400
         )
 
         return response.choices[0].message.content
 
     except Exception as e:
-        return f"❌ Groq API Error: {str(e)}"
+        return f"❌ Groq API Error: {e}"
